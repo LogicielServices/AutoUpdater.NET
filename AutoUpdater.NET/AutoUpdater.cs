@@ -66,6 +66,10 @@ namespace AutoUpdaterDotNET
 
         private static bool _isWinFormsApplication;
 
+        private static string DownloadedFileName = null;
+
+        private static bool IsDownloadSuccessfully;
+
         internal static Uri BaseUri;
 
         internal static bool Running;
@@ -630,7 +634,7 @@ namespace AutoUpdaterDotNET
         /// </summary>
         public static bool DownloadUpdate(UpdateInfoEventArgs args)
         {
-            using (var downloadDialog = new DownloadUpdateDialog(args))
+            using (var downloadDialog = new DownloadUpdateDialog(new DownloadManager( args),new UpdateManager(args)))
             {
                 try
                 {
@@ -642,6 +646,46 @@ namespace AutoUpdaterDotNET
             }
 
             return false;
+        }
+        private static ManualResetEvent oSignalEvent = new ManualResetEvent(false);
+        public static bool DownloadSilently(UpdateInfoEventArgs args)
+        {
+            try
+            {
+                //Thread.Sleep(1000);
+                DownloadManager downloader = new DownloadManager(args);
+                downloader._OnDownloadFileCompleted += Downloader__OnDownloadFileCompleted;
+                downloader.DownloadFileAsync();
+                return true;
+            }
+            catch (TargetInvocationException)
+            {
+            }
+
+            return false;
+        }
+        public static void Update(UpdateInfoEventArgs args)
+        {
+            UpdateManager updater = new UpdateManager(args);
+            if (IsDownloadSuccessfully && DownloadedFileName != null)
+            {
+                updater._OnUpdateCompleted += Updater__OnUpdateCompleted;
+                updater.Update(DownloadedFileName);
+            }
+                
+        }
+
+        private static void Updater__OnUpdateCompleted(string fileName, bool isUpdateSuccessfully)
+        {
+            //throw new NotImplementedException();
+        }
+
+        private static void Downloader__OnDownloadFileCompleted(string FileName, object sender, EventArgs args, bool isDownloadSuccessfully)
+        {
+            //Thread.Sleep(10000);
+            oSignalEvent.Set();
+            DownloadedFileName = FileName;
+            IsDownloadSuccessfully = isDownloadSuccessfully;
         }
 
         /// <summary>
