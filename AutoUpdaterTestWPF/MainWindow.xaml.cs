@@ -45,8 +45,8 @@ namespace AutoUpdaterTestWPF
             //AutoUpdater.UpdateMode = Mode.Forced;
             AutoUpdater.Synchronous = true;
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
-            AutoUpdater.Start("http://localhost:10001/updates/AutoUpdaterTest-1.xml");
-            //AutoUpdater.Start("http://rbsoft.org/updates/AutoUpdaterTestWPF.xml");
+            //AutoUpdater.Start("http://localhost:10001/updates/AutoUpdaterTest-1.xml");
+            AutoUpdater.Start("http://rbsoft.org/updates/AutoUpdaterTestWPF.xml");
             
         }
 

@@ -21,6 +21,7 @@ namespace ZipExtractor
         public FormMain()
         {
             InitializeComponent();
+            ControlBox = false;
         }
 
         private void FormMain_Shown(object sender, EventArgs e)
@@ -268,6 +269,11 @@ namespace ZipExtractor
 
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (ModifierKeys == Keys.Alt || ModifierKeys == Keys.F4)
+            {
+                e.Cancel = true;
+                return;
+            }
             _backgroundWorker?.CancelAsync();
 
             _logBuilder.AppendLine();
