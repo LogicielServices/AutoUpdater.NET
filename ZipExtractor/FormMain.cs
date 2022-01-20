@@ -260,6 +260,7 @@ namespace ZipExtractor
                     {
                         _logBuilder.AppendLine();
                         Application.Exit();
+                        Environment.Exit(0);
                     }
                 };
 
