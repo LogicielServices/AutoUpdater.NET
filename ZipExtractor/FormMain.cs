@@ -199,6 +199,7 @@ namespace ZipExtractor
                     }
                     finally
                     {
+                        CopyFilesFromSystemToBooth(args);
 #if NET45
                         archive.Dispose();
 #else
@@ -280,6 +281,46 @@ namespace ZipExtractor
             _logBuilder.AppendLine();
             File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ZipExtractor.log"),
                 _logBuilder.ToString());
+        }
+
+        private void CopyFilesFromSystemToBooth(string[] args)
+        {
+            var BoothRootFolder = args[2] + "/Profile/Booth";
+            var System = args[2] + "/Profile/System";
+
+            try
+            {
+                foreach (var booth in Directory.GetDirectories(BoothRootFolder))
+                {
+                    foreach (var boothUserPath in Directory.GetDirectories(booth))
+                    {
+                        CopyAll(new DirectoryInfo( System), new DirectoryInfo(boothUserPath));
+                    }
+                }
+            }
+            catch (System.IO.IOException e)
+            {
+                _logBuilder.AppendLine(e.ToString());
+            }
+        }
+        public static void CopyAll(DirectoryInfo source, DirectoryInfo target)
+        {
+            Directory.CreateDirectory(target.FullName);
+
+            // Copy each file into the new directory.
+            foreach (FileInfo fi in source.GetFiles())
+            {
+                Console.WriteLine(@"Copying {0}\{1}", target.FullName, fi.Name);
+                fi.CopyTo(Path.Combine(target.FullName, fi.Name), true);
+            }
+
+            // Copy each subdirectory using recursion.
+            foreach (DirectoryInfo diSourceSubDir in source.GetDirectories())
+            {
+                DirectoryInfo nextTargetSubDir =
+                    target.CreateSubdirectory(diSourceSubDir.Name);
+                CopyAll(diSourceSubDir, nextTargetSubDir);
+            }
         }
     }
 }
