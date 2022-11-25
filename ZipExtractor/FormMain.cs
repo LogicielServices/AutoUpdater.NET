@@ -43,6 +43,10 @@ namespace ZipExtractor
             {
                 string executablePath = args[3];
 
+
+                //Delete all the dlls before copying latest version
+                DeleteDllsAndExe(args);
+
                 // Extract all the files.
                 _backgroundWorker = new BackgroundWorker
                 {
@@ -320,6 +324,27 @@ namespace ZipExtractor
                 DirectoryInfo nextTargetSubDir =
                     target.CreateSubdirectory(diSourceSubDir.Name);
                 CopyAll(diSourceSubDir, nextTargetSubDir);
+            }
+        }
+        private void DeleteDllsAndExe(string[] args)
+        {
+            try
+            {
+                string[] dlls = Directory.GetFiles(args[2], "*.dll");
+                foreach (var dll in dlls)
+                {
+                    File.Delete(dll);
+                }
+
+                string[] executables = Directory.GetFiles(args[2], "*.exe");
+                foreach (var exe in executables)
+                {
+                    File.Delete(exe);
+                }
+            }
+            catch (System.IO.IOException e)
+            {
+                _logBuilder.AppendLine(e.ToString());
             }
         }
     }
