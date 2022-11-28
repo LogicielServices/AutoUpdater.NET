@@ -1,16 +1,19 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Windows.Forms;
 
 namespace AutoUpdaterDotNET
 {
     internal partial class RemindLaterForm : Form
     {
+        private static ILog logger = LogManager.GetLogger("ZipExtractorLogger");
         public RemindLaterFormat RemindLaterFormat { get; private set; }
 
         public int RemindLaterAt { get; private set; }
 
         public RemindLaterForm()
         {
+            logger.Info("Initializing Remind Later Form");
             InitializeComponent();
         }
 
@@ -22,8 +25,10 @@ namespace AutoUpdaterDotNET
 
         private void ButtonOkClick(object sender, EventArgs e)
         {
+            logger.Debug("Radio Button Yes Check Value :" + radioButtonYes.Checked);
             if (radioButtonYes.Checked)
             {
+                logger.Debug("Remind Later Selected Index: " + comboBoxRemindLater.SelectedIndex.ToString());
                 switch (comboBoxRemindLater.SelectedIndex)
                 {
                     case 0:

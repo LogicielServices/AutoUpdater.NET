@@ -1,4 +1,5 @@
 ﻿using AutoUpdaterDotNET.Properties;
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -11,17 +12,20 @@ namespace AutoUpdaterDotNET
     public class UpdateManager
     {
         private readonly UpdateInfoEventArgs _args;
+        private static ILog logger = LogManager.GetLogger("ZipExtractorLogger");
 
         public delegate void OnUpdateCompleted(string fileName, bool isUpdateSuccessfully);
         public event OnUpdateCompleted _OnUpdateCompleted;
         private bool isUpdateSuccessfyully = false;
         public UpdateManager(UpdateInfoEventArgs args)
         {
+            logger.Info("Initializing Update Manager Object");
             _args = args;
         }
         
         public void Update(string tempPath)
         {
+            logger.Info("Inside Update Method of Update Manager");
             string installerArgs = null;
             if (!string.IsNullOrEmpty(_args.InstallerArgs))
             {
@@ -35,7 +39,7 @@ namespace AutoUpdaterDotNET
                 UseShellExecute = true,
                 Arguments = installerArgs
             };
-
+            logger.Info(processStartInfo.FileName);
             var extension = Path.GetExtension(tempPath);
             if (extension.Equals(".zip", StringComparison.OrdinalIgnoreCase))
             {
@@ -93,11 +97,12 @@ namespace AutoUpdaterDotNET
 
             try
             {
+                logger.Info("Starting Process After Update Successfully True");
                 isUpdateSuccessfyully = true;
                 Process.Start(processStartInfo);
             }
             catch (Win32Exception exception)
-            {
+            {logger.Error(exception.ToString());
                 isUpdateSuccessfyully = false;
                 if (exception.NativeErrorCode == 1223)
                 {

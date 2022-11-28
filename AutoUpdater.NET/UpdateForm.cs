@@ -4,12 +4,15 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Windows.Forms;
+using log4net;
+using log4net.Repository.Hierarchy;
 using Microsoft.Win32;
 
 namespace AutoUpdaterDotNET
 {
     internal partial class UpdateForm : Form
     {
+        private static ILog logger = LogManager.GetLogger("ZipExtractorLogger");
         private readonly UpdateInfoEventArgs _args;
 
         public UpdateForm(UpdateInfoEventArgs args)
@@ -37,6 +40,7 @@ namespace AutoUpdaterDotNET
         private void UseLatestIE()
         {
             int ieValue = 0;
+            logger.Debug("Web Browser Major Version: " + webBrowser.Version.Major.ToString());
             switch (webBrowser.Version.Major)
             {
                 case 11:
@@ -70,8 +74,9 @@ namespace AutoUpdaterDotNET
                             RegistryValueKind.DWord);
                     }
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
+                    logger.Error(e.ToString());
                     // ignored
                 }
             }
@@ -105,10 +110,11 @@ namespace AutoUpdaterDotNET
 
         private void ButtonUpdateClick(object sender, EventArgs e)
         {
+            logger.Info("Inside Button Update Click");
             if (AutoUpdater.OpenDownloadPage)
             {
                 var processStartInfo = new ProcessStartInfo(_args.DownloadURL);
-
+                logger.Info("Starting Process");
                 Process.Start(processStartInfo);
 
                 DialogResult = DialogResult.OK;
@@ -124,11 +130,13 @@ namespace AutoUpdaterDotNET
 
         private void ButtonSkipClick(object sender, EventArgs e)
         {
+            logger.Info("Inside Skip Click Button");
             AutoUpdater.PersistenceProvider.SetSkippedVersion(new Version(_args.CurrentVersion));
         }
 
         private void ButtonRemindLaterClick(object sender, EventArgs e)
         {
+            logger.Info("Inside Remind Later Click Button");
             if (AutoUpdater.LetUserSelectRemindLater)
             {
                 using (var remindLaterForm = new RemindLaterForm())
