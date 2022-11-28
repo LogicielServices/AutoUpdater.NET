@@ -64,7 +64,8 @@ namespace AutoUpdaterDotNET
     /// </summary>
     public static class AutoUpdater
     {
-       private static  ILog logger = LogManager.GetLogger("ZipExtractorLogger");
+        
+        private static  ILog logger = LogManager.GetLogger("ZipExtractorLogger");
         
         private static System.Timers.Timer _remindLaterTimer;
 
@@ -663,14 +664,16 @@ namespace AutoUpdaterDotNET
         /// </summary>
         public static bool DownloadUpdate(UpdateInfoEventArgs args)
         {
+            logger.Info("Inside Download Update Method");
             using (var downloadDialog = new DownloadUpdateDialog(new DownloadManager( args),new UpdateManager(args)))
             {
                 try
                 {
                     return downloadDialog.ShowDialog().Equals(DialogResult.OK);
                 }
-                catch (TargetInvocationException)
+                catch (TargetInvocationException e)
                 {
+                    logger.Error(e.ToString());
                 }
             }
 
@@ -740,7 +743,7 @@ namespace AutoUpdaterDotNET
 
         internal static MyWebClient GetWebClient(Uri uri, IAuthentication basicAuthentication)
         {
-            logger.Info("Get Web Client URI: " + uri);
+            logger.Info("Inside Get Web Client Method");
             MyWebClient webClient = new MyWebClient
             {
                 CachePolicy = new RequestCachePolicy(RequestCacheLevel.NoCacheNoStore)
