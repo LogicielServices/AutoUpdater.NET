@@ -1,4 +1,5 @@
 ﻿using AutoUpdaterDotNET.Properties;
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,6 +17,7 @@ namespace AutoUpdaterDotNET
 {
     public class DownloadManager
     {
+        private static ILog logger = LogManager.GetLogger("ZipExtractorLogger");
         private readonly UpdateInfoEventArgs _args;
 
         private string _tempFile;
@@ -33,6 +35,7 @@ namespace AutoUpdaterDotNET
         public event OnDownloadFileCompleted _OnDownloadFileCompleted;
         public DownloadManager(UpdateInfoEventArgs args)
         {
+            logger.Info("Initializing Download Manager Object");
             _args = args;
             Init();
         }
@@ -49,6 +52,7 @@ namespace AutoUpdaterDotNET
                 _tempFile = Path.Combine(AutoUpdater.DownloadPath, $"{Guid.NewGuid().ToString()}.tmp");
                 if (!Directory.Exists(AutoUpdater.DownloadPath))
                 {
+                    logger.Info("Creating Directory");
                     Directory.CreateDirectory(AutoUpdater.DownloadPath);
                 }
             }
@@ -56,7 +60,7 @@ namespace AutoUpdaterDotNET
         }
         public void DownloadFileAsync()
         {
-            
+            logger.Info("Downloading File Async Started");
             _webClient.DownloadFileAsync(uri, _tempFile);
             
         }
@@ -68,9 +72,11 @@ namespace AutoUpdaterDotNET
         //}
         private void WebClientOnDownloadFileCompleted(object sender, AsyncCompletedEventArgs asyncCompletedEventArgs)
         {
+            logger.Info("Download File Completed");
             string tempPath = "";
             if (asyncCompletedEventArgs.Cancelled)
             {
+                logger.Info("Completed Event Calcelled");
                 return;
             }
 
@@ -78,6 +84,7 @@ namespace AutoUpdaterDotNET
             {
                 if (asyncCompletedEventArgs.Error != null)
                 {
+                    logger.Error(asyncCompletedEventArgs.Error.ToString());
                     throw asyncCompletedEventArgs.Error;
                 }
 
@@ -100,12 +107,12 @@ namespace AutoUpdaterDotNET
                     Path.Combine(
                         string.IsNullOrEmpty(AutoUpdater.DownloadPath) ? Path.GetTempPath() : AutoUpdater.DownloadPath,
                         fileName);
-
+                logger.Info("Deleting File");
                 if (File.Exists(tempPath))
                 {
                     File.Delete(tempPath);
                 }
-
+                logger.Info("Moving File Location");
                 File.Move(_tempFile, tempPath);
 
                 //string installerArgs = null;
@@ -195,6 +202,7 @@ namespace AutoUpdaterDotNET
             }
             catch (Exception e)
             {
+                logger.Error(e.ToString());
                 MessageBox.Show(e.Message, e.GetType().ToString(), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 _webClient = null;
             }
@@ -207,6 +215,7 @@ namespace AutoUpdaterDotNET
 
         private static void CompareChecksum(string fileName, CheckSum checksum)
         {
+            logger.Info("Inside Compare Checksum Method");
             using (var hashAlgorithm =
                 HashAlgorithm.Create(
                     string.IsNullOrEmpty(checksum.HashingAlgorithm) ? "MD5" : checksum.HashingAlgorithm))
@@ -220,6 +229,7 @@ namespace AutoUpdaterDotNET
 
                         if (fileChecksum == checksum.Value.ToLower()) return;
 
+                        
                         throw new Exception(Resources.FileIntegrityCheckFailedMessage);
                     }
 

@@ -3,7 +3,7 @@
     <PropertyGroup>
         <ProjectGuid>{91DE558C-6DB8-429B-A069-C0491DCFF15B}</ProjectGuid>
         <OutputType>WinExe</OutputType>
-        <TargetFrameworks>net20;net35;net40;net45;net47</TargetFrameworks>
+        <TargetFrameworks>net40;net45;net47</TargetFrameworks>
         <UseWindowsForms>true</UseWindowsForms>
         <AssemblyTitle>ZipExtractor</AssemblyTitle>
         <Company>RBSoft</Company>
@@ -42,6 +42,9 @@
     <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
         <Reference Include="System.IO.Compression" />
         <Reference Include="System.IO.Compression.FileSystem" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="log4net" Version="2.0.15" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="System.Windows.Forms" />

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -17,6 +18,8 @@ namespace ZipExtractor
         private const int MaxRetries = 2;
         private BackgroundWorker _backgroundWorker;
         private readonly StringBuilder _logBuilder = new StringBuilder();
+       private static  ILog logger = LogManager.GetLogger("ZipExtractorLogger");
+
 
         public FormMain()
         {
@@ -26,18 +29,21 @@ namespace ZipExtractor
 
         private void FormMain_Shown(object sender, EventArgs e)
         {
-            _logBuilder.AppendLine(DateTime.Now.ToString("F"));
-            _logBuilder.AppendLine();
-            _logBuilder.AppendLine("ZipExtractor started with following command line arguments.");
+            logger.Info(DateTime.Now.ToString("F"));
+            logger.Info("ZipExtractor started with following command line arguments.");
+            //_logBuilder.AppendLine(DateTime.Now.ToString("F"));
+            //_logBuilder.AppendLine();
+            //_logBuilder.AppendLine("ZipExtractor started with following command line arguments.");
 
             string[] args = Environment.GetCommandLineArgs();
             for (var index = 0; index < args.Length; index++)
             {
                 var arg = args[index];
-                _logBuilder.AppendLine($"[{index}] {arg}");
+                logger.Info($"[{index}] {arg}");
+               // _logBuilder.AppendLine($"[{index}] {arg}");
             }
 
-            _logBuilder.AppendLine();
+          //  _logBuilder.AppendLine();
 
             if (args.Length >= 4)
             {
@@ -62,7 +68,8 @@ namespace ZipExtractor
                         {
                             if (process.MainModule != null && process.MainModule.FileName.Equals(executablePath))
                             {
-                                _logBuilder.AppendLine("Waiting for application process to exit...");
+                                logger.Info("Waiting for application process to exit...");
+                              //  _logBuilder.AppendLine("Waiting for application process to exit...");
 
                                 _backgroundWorker.ReportProgress(0, "Waiting for application to exit...");
                                 process.WaitForExit();
@@ -74,7 +81,8 @@ namespace ZipExtractor
                         }
                     }
 
-                    _logBuilder.AppendLine("BackgroundWorker started successfully.");
+                    logger.Info("BackgroundWorker started successfully.");
+                   // _logBuilder.AppendLine("BackgroundWorker started successfully.");
 
                     var path = args[2];
                     
@@ -96,8 +104,8 @@ namespace ZipExtractor
                     // Read the central directory collection.
                     var entries = zip.ReadCentralDir();
 #endif
-
-                    _logBuilder.AppendLine($"Found total of {entries.Count} files and folders inside the zip file.");
+                    logger.Info($"Found total of {entries.Count} files and folders inside the zip file.");
+                  //  _logBuilder.AppendLine($"Found total of {entries.Count} files and folders inside the zip file.");
 
                     try
                     {
@@ -197,8 +205,8 @@ namespace ZipExtractor
 
                             progress = (index + 1) * 100 / entries.Count;
                             _backgroundWorker.ReportProgress(progress, currentFile);
-
-                            _logBuilder.AppendLine($"{currentFile} [{progress}%]");
+                            logger.Info($"{currentFile} [{progress}%]");
+                           // _logBuilder.AppendLine($"{currentFile} [{progress}%]");
                         }
                     }
                     finally
@@ -241,8 +249,8 @@ namespace ZipExtractor
                                 }
 
                                 Process.Start(processStartInfo);
-
-                                _logBuilder.AppendLine("Successfully launched the updated application.");
+                                logger.Info("Successfully launched the updated application.");
+                                //_logBuilder.AppendLine("Successfully launched the updated application.");
                             }
                             catch (Win32Exception exception)
                             {
@@ -255,15 +263,16 @@ namespace ZipExtractor
                     }
                     catch (Exception exception)
                     {
-                        _logBuilder.AppendLine();
-                        _logBuilder.AppendLine(exception.ToString());
+                       // _logBuilder.AppendLine();
+                       logger.Error(exception.ToString());
+                      //  _logBuilder.AppendLine(exception.ToString());
 
                         MessageBox.Show(exception.Message, exception.GetType().ToString(),
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                     finally
                     {
-                        _logBuilder.AppendLine();
+                       // _logBuilder.AppendLine();
                         Application.Exit();
                         Environment.Exit(0);
                     }
@@ -282,9 +291,9 @@ namespace ZipExtractor
             }
             _backgroundWorker?.CancelAsync();
 
-            _logBuilder.AppendLine();
-            File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ZipExtractor.log"),
-                _logBuilder.ToString());
+       //     _logBuilder.AppendLine();
+            //File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ZipExtractor.log"),
+                //_logBuilder.ToString());
         }
 
         private void CopyFilesFromSystemToBooth(string[] args)
@@ -304,7 +313,8 @@ namespace ZipExtractor
             }
             catch (System.IO.IOException e)
             {
-                _logBuilder.AppendLine(e.ToString());
+                logger.Error(e.ToString());
+               // _logBuilder.AppendLine(e.ToString());
             }
         }
         public static void CopyAll(DirectoryInfo source, DirectoryInfo target)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using log4net;
 using Microsoft.Win32;
 
 namespace AutoUpdaterDotNET
@@ -9,6 +10,7 @@ namespace AutoUpdaterDotNET
     /// </summary>
     public class RegistryPersistenceProvider : IPersistenceProvider
     {
+        private static ILog logger = LogManager.GetLogger("ZipExtractorLogger");
         /// <summary>
         /// Gets/sets the path for the Windows Registry key that will contain the data.
         /// </summary>
@@ -30,6 +32,8 @@ namespace AutoUpdaterDotNET
         /// <inheritdoc />
         public Version GetSkippedVersion()
         {
+            logger.Info("Getting Skipped Version");
+
             try
             {
                 using (RegistryKey updateKey = Registry.CurrentUser.OpenSubKey(RegistryLocation))
@@ -42,8 +46,9 @@ namespace AutoUpdaterDotNET
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                logger.Error(e.ToString());
                 // ignored
             }
 
@@ -54,6 +59,7 @@ namespace AutoUpdaterDotNET
         /// <inheritdoc />
         public DateTime? GetRemindLater()
         {
+            logger.Info("Getting Remind Later");
             using (RegistryKey updateKey = Registry.CurrentUser.OpenSubKey(RegistryLocation))
             {
                 object remindLaterValue = updateKey?.GetValue(RemindLaterValueName);
@@ -71,6 +77,8 @@ namespace AutoUpdaterDotNET
         /// <inheritdoc />
         public void SetSkippedVersion(Version version)
         {
+            logger.Info("Setting Skipped Version");
+
             using (RegistryKey autoUpdaterKey = Registry.CurrentUser.CreateSubKey(RegistryLocation))
             {
                 autoUpdaterKey?.SetValue(SkippedVersionValueName, version != null ? version.ToString() : string.Empty);
@@ -80,6 +88,8 @@ namespace AutoUpdaterDotNET
         /// <inheritdoc />
         public void SetRemindLater(DateTime? remindLaterAt)
         {
+            logger.Info("Setting Remid Later");
+
             using (RegistryKey autoUpdaterKey = Registry.CurrentUser.CreateSubKey(RegistryLocation))
             {
                 autoUpdaterKey?.SetValue(RemindLaterValueName,

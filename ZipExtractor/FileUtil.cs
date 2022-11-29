@@ -1,4 +1,5 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -8,6 +9,8 @@ namespace ZipExtractor
     // https://stackoverflow.com/a/20623302/1273550
     public static class FileUtil
     {
+        private static ILog logger = LogManager.GetLogger("ZipExtractorLogger");
+
         [StructLayout(LayoutKind.Sequential)]
         struct RM_UNIQUE_PROCESS
         {
@@ -87,8 +90,10 @@ namespace ZipExtractor
             int res = RmStartSession(out var handle, 0, key);
 
             if (res != 0)
+            {
+                logger.Error("Could not begin restart session.  Unable to determine file locker.");
                 throw new Exception("Could not begin restart session.  Unable to determine file locker.");
-
+            }
             try
             {
                 const int ERROR_MORE_DATA = 234;
@@ -100,8 +105,10 @@ namespace ZipExtractor
                 res = RmRegisterResources(handle, (uint) resources.Length, resources, 0, null, 0, null);
 
                 if (res != 0)
+                {
+                    logger.Error("Could not register resource.");
                     throw new Exception("Could not register resource.");
-
+                }
                 //Note: there's a race condition here -- the first call to RmGetList() returns
                 //      the total number of process. However, when we call RmGetList() again to get
                 //      the actual processes this number may have increased.
@@ -118,7 +125,7 @@ namespace ZipExtractor
 
                     if (res == 0)
                     {
-                        processes = new List<Process>((int) pnProcInfo);
+                        processes = new List<Process>((int)pnProcInfo);
 
                         // Enumerate all of the results and add them to the 
                         // list to be returned
@@ -135,10 +142,16 @@ namespace ZipExtractor
                         }
                     }
                     else
+                    {
+                        logger.Error("Could not list processes locking resource.");
                         throw new Exception("Could not list processes locking resource.");
+                    }
                 }
                 else if (res != 0)
+                {
+                    logger.Error("Could not list processes locking resource. Failed to get size of result.");
                     throw new Exception("Could not list processes locking resource. Failed to get size of result.");
+                }
             }
             finally
             {

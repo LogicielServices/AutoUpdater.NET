@@ -12,6 +12,8 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Serialization;
 using AutoUpdaterDotNET.Properties;
+using log4net;
+using log4net.Repository.Hierarchy;
 
 namespace AutoUpdaterDotNET
 {
@@ -62,6 +64,9 @@ namespace AutoUpdaterDotNET
     /// </summary>
     public static class AutoUpdater
     {
+        
+        private static  ILog logger = LogManager.GetLogger("ZipExtractorLogger");
+        
         private static System.Timers.Timer _remindLaterTimer;
 
         private static bool _isWinFormsApplication;
@@ -233,6 +238,7 @@ namespace AutoUpdaterDotNET
         /// <param name="myAssembly">Assembly to use for version checking.</param>
         public static void Start(Assembly myAssembly = null)
         {
+            logger.Info("Checking New Application Version ");
             Start(AppCastURL, myAssembly);
         }
 
@@ -244,6 +250,7 @@ namespace AutoUpdaterDotNET
         /// <param name="myAssembly">Assembly to use for version checking.</param>
         public static void Start(string appCast, NetworkCredential ftpCredentials, Assembly myAssembly = null)
         {
+            logger.Info("Checking New Application Version Via FTP ");
             FtpCredentials = ftpCredentials;
             Start(appCast, myAssembly);
         }
@@ -255,6 +262,8 @@ namespace AutoUpdaterDotNET
         /// <param name="myAssembly">Assembly to use for version checking.</param>
         public static void Start(string appCast, Assembly myAssembly = null)
         {
+            logger.Info("New Version Check started");
+
             try
             {
                 ServicePointManager.SecurityProtocol |= (SecurityProtocolType) 192 |
@@ -264,15 +273,21 @@ namespace AutoUpdaterDotNET
             {
             }
 
+            logger.Info("Checking Mandatory and Remid Later Timer for Not NULL");
+
             if (Mandatory && _remindLaterTimer != null)
             {
+                logger.Info("Inside the Check of Mandatory and Remid Later Timer for Not NULL");
                 _remindLaterTimer.Stop();
                 _remindLaterTimer.Close();
                 _remindLaterTimer = null;
             }
 
+            logger.Info("Checking Not Running and Remid Later Timer for NULL");
+
             if (!Running && _remindLaterTimer == null)
             {
+                logger.Info("Inside the Check of Not Running and Remid Later Timer for NULL");
                 Running = true;
 
                 AppCastURL = appCast;
@@ -285,7 +300,7 @@ namespace AutoUpdaterDotNET
                 }
 
                 Assembly assembly = myAssembly ?? Assembly.GetEntryAssembly();
-
+              
                 if (Synchronous)
                 {
                     try
@@ -338,28 +353,29 @@ namespace AutoUpdaterDotNET
 
         private static object CheckUpdate(Assembly mainAssembly)
         {
+            logger.Info("Check Update Started");
             var companyAttribute =
                 (AssemblyCompanyAttribute) GetAttribute(mainAssembly, typeof(AssemblyCompanyAttribute));
             string appCompany = companyAttribute != null ? companyAttribute.Company : "";
-
+            logger.Info("App Company: " + appCompany);
             if (string.IsNullOrEmpty(AppTitle))
             {
                 var titleAttribute =
                     (AssemblyTitleAttribute) GetAttribute(mainAssembly, typeof(AssemblyTitleAttribute));
                 AppTitle = titleAttribute != null ? titleAttribute.Title : mainAssembly.GetName().Name;
             }
-
+            logger.Info("App Title: " + AppTitle);
             string registryLocation = !string.IsNullOrEmpty(appCompany)
                 ? $@"Software\{appCompany}\{AppTitle}\AutoUpdater"
                 : $@"Software\{AppTitle}\AutoUpdater";
-
+            logger.Info("Registry Location: " + registryLocation);
             if (PersistenceProvider == null)
             {
                 PersistenceProvider = new RegistryPersistenceProvider(registryLocation);
             }
 
             BaseUri = new Uri(AppCastURL);
-
+            logger.Info("Base URI: " + BaseUri);
             UpdateInfoEventArgs args;
             using (MyWebClient client = GetWebClient(BaseUri, BasicAuthXML))
             {
@@ -386,7 +402,9 @@ namespace AutoUpdaterDotNET
 
             args.InstalledVersion = InstalledVersion != null ? InstalledVersion : mainAssembly.GetName().Version;
             args.IsUpdateAvailable = new Version(args.CurrentVersion) > args.InstalledVersion;
-
+            logger.Info("Installed Version: " + args.InstalledVersion);
+            logger.Info("Available Version for Update: " + args.IsUpdateAvailable);
+            logger.Info("Value of Mandatory: " + Mandatory);
             if (!Mandatory)
             {
                 if (string.IsNullOrEmpty(args.Mandatory.MinimumVersion) ||
@@ -407,6 +425,7 @@ namespace AutoUpdaterDotNET
                 // Read the persisted state from the persistence provider.
                 // This method makes the persistence handling independent from the storage method.
                 var skippedVersion = PersistenceProvider.GetSkippedVersion();
+                logger.Info("Skipped Version: " + skippedVersion);
                 if (skippedVersion != null)
                 {
                     var currentVersion = new Version(args.CurrentVersion);
@@ -421,10 +440,11 @@ namespace AutoUpdaterDotNET
                 }
 
                 var remindLaterAt = PersistenceProvider.GetRemindLater();
+                logger.Info("Remind Later at: " + remindLaterAt);
                 if (remindLaterAt != null)
                 {
                     int compareResult = DateTime.Compare(DateTime.Now, remindLaterAt.Value);
-
+                    logger.Info("Compare Results Value: " + compareResult);
                     if (compareResult < 0)
                     {
                         return remindLaterAt.Value;
@@ -437,6 +457,9 @@ namespace AutoUpdaterDotNET
 
         private static bool StartUpdate(object result)
         {
+            logger.Info("Update started");
+            logger.Info("Update Mode Value: " + UpdateMode);
+            logger.Info("Mandator Value: " + Mandatory);
             if (result is DateTime time)
             {
                 SetTimer(time);
@@ -455,6 +478,7 @@ namespace AutoUpdaterDotNET
                         {
                             if (Mandatory && UpdateMode == Mode.ForcedDownload)
                             {
+                                logger.Info("Downloading Update");
                                 DownloadUpdate(args);
                                 Exit();
                             }
@@ -462,10 +486,12 @@ namespace AutoUpdaterDotNET
                             {
                                 if (Thread.CurrentThread.GetApartmentState().Equals(ApartmentState.STA))
                                 {
+                                    logger.Info("Showing Update Form");
                                     ShowUpdateForm(args);
                                 }
                                 else
                                 {
+                                    logger.Info("Showing Update Form");
                                     Thread thread = new Thread(new ThreadStart(delegate { ShowUpdateForm(args); }));
                                     thread.CurrentCulture =
                                         thread.CurrentUICulture = CultureInfo.CurrentCulture;
@@ -522,6 +548,7 @@ namespace AutoUpdaterDotNET
         /// </summary>
         private static void Exit()
         {
+            logger.Info("Exiting From Updater");
             var currentProcess = Process.GetCurrentProcess();
             foreach (var process in Process.GetProcessesByName(currentProcess.ProcessName))
             {
@@ -576,10 +603,13 @@ namespace AutoUpdaterDotNET
                     Environment.Exit(0);
                 }
             }
+            logger.Info("Exit Completed From Updater");
         }
 
         private static Attribute GetAttribute(Assembly assembly, Type attributeType)
         {
+            logger.Info("Get Attribute Called For Assembly: " + assembly.FullName +" With Type: "+attributeType);
+            
             object[] attributes = assembly.GetCustomAttributes(attributeType, false);
             if (attributes.Length == 0)
             {
@@ -634,14 +664,16 @@ namespace AutoUpdaterDotNET
         /// </summary>
         public static bool DownloadUpdate(UpdateInfoEventArgs args)
         {
+            logger.Info("Inside Download Update Method");
             using (var downloadDialog = new DownloadUpdateDialog(new DownloadManager( args),new UpdateManager(args)))
             {
                 try
                 {
                     return downloadDialog.ShowDialog().Equals(DialogResult.OK);
                 }
-                catch (TargetInvocationException)
+                catch (TargetInvocationException e)
                 {
+                    logger.Error(e.ToString());
                 }
             }
 
@@ -666,6 +698,7 @@ namespace AutoUpdaterDotNET
         }
         public static void Update(UpdateInfoEventArgs args)
         {
+            logger.Info("Initializing Update Manager");
             UpdateManager updater = new UpdateManager(args);
             if (IsDownloadSuccessfully && DownloadedFileName != null)
             {
@@ -693,6 +726,7 @@ namespace AutoUpdaterDotNET
         /// </summary>
         public static void ShowUpdateForm(UpdateInfoEventArgs args)
         {
+            logger.Info("Showing Update Form");
             using (var updateForm = new UpdateForm(args))
             {
                 if (UpdateFormSize.HasValue)
@@ -709,6 +743,7 @@ namespace AutoUpdaterDotNET
 
         internal static MyWebClient GetWebClient(Uri uri, IAuthentication basicAuthentication)
         {
+            logger.Info("Inside Get Web Client Method");
             MyWebClient webClient = new MyWebClient
             {
                 CachePolicy = new RequestCachePolicy(RequestCacheLevel.NoCacheNoStore)
