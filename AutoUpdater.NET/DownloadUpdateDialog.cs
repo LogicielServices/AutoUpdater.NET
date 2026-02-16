@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -25,6 +26,7 @@ namespace AutoUpdaterDotNET
         public DownloadUpdateDialog(DownloadManager Downloader,UpdateManager updater)
         {
             InitializeComponent();
+            pictureBoxIcon.Image = Image.FromFile(Path.Combine(Application.StartupPath, "download_32.png"));
             this.updater = updater;
             //_args = args;
             downloader = Downloader;

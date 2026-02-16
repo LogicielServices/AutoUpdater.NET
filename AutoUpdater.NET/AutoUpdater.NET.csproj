@@ -3,7 +3,7 @@
     <PropertyGroup>
         <ProjectGuid>{FB9E7E6B-B19F-4F37-A708-2996190CEF13}</ProjectGuid>
         <OutputType>library</OutputType>
-        <TargetFrameworks>net20;net35;net40;net45;net47</TargetFrameworks>
+		<TargetFramework>net48</TargetFramework>
         <UseWindowsForms>true</UseWindowsForms>
         <RootNamespace>AutoUpdaterDotNET</RootNamespace>
         <AssemblyTitle>AutoUpdater.NET</AssemblyTitle>
@@ -40,6 +40,17 @@
         <DefineConstants>NETWPF</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
+      <None Remove="Images\clock_go.png" />
+      <None Remove="Images\clock_go1.png" />
+      <None Remove="Images\clock_go_32.png" />
+      <None Remove="Images\clock_play.png" />
+      <None Remove="Images\download.png" />
+      <None Remove="Images\download1.png" />
+      <None Remove="Images\download_32.png" />
+      <None Remove="Images\hand_point.png" />
+      <None Remove="Images\update.png" />
+    </ItemGroup>
+    <ItemGroup>
         <Reference Include="System" />
         <Reference Include="System.Data" />
         <Reference Include="System.Drawing" />
@@ -62,6 +73,49 @@
     </ItemGroup>
     <ItemGroup>
       <Folder Include="build\lib" />
+      <Folder Include="Images - Copy\" />
+    </ItemGroup>
+    <ItemGroup>
+      <Resource Include="Images\clock_go.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\clock_go1.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\clock_go_32.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\clock_play.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\download.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\download1.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\download_32.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\hand_point.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+      <Resource Include="Images\update.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Resource>
+    </ItemGroup>
+    <ItemGroup>
+      <Compile Update="Properties\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Update="Properties\Resources.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
     </ItemGroup>
     
 </Project>
