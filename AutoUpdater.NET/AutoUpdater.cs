@@ -561,7 +561,7 @@ namespace AutoUpdaterDotNET
             {
                 if (_isWinFormsApplication)
                 {
-                    MethodInvoker methodInvoker = Application.Exit;
+                    System.Windows.Forms.MethodInvoker methodInvoker = Application.Exit;
                     methodInvoker.Invoke();
                 }
 #if NETWPF
