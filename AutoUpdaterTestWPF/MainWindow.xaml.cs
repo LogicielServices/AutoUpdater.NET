@@ -4,7 +4,6 @@ using System;
 using System.Globalization;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace AutoUpdaterTestWPF
@@ -41,8 +40,9 @@ namespace AutoUpdaterTestWPF
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (_args != null)
-                AutoUpdater.Update(_args);
+            //NOTE: Update method dont exist will check in previous version
+            //if (_args != null)
+            //    AutoUpdater.Update(_args);
 
         }
 
@@ -108,7 +108,8 @@ namespace AutoUpdaterTestWPF
                     {
                         try
                         {
-                            Task.Factory.StartNew(() => AutoUpdater.DownloadSilently(args));
+                            // NOTE: Import DownloadSilently from pervious version
+                            //Task.Factory.StartNew(() => AutoUpdater.DownloadSilently(args));
                         }
                         catch (Exception exception)
                         {
