@@ -90,6 +90,24 @@ namespace ZipExtractor.Properties {
                 return ResourceManager.GetString("FileStillInUseCaption", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removing {0}.
+        /// </summary>
+        internal static string Removing {
+            get {
+                return ResourceManager.GetString("Removing", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for application to exit….
+        /// </summary>
+        internal static string WaitingForAppToExitMessage {
+            get {
+                return ResourceManager.GetString("WaitingForAppToExitMessage", resourceCulture);
+            }
+        }
 
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.

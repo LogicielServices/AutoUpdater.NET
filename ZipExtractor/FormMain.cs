@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -10,342 +11,330 @@ using System.Threading;
 using System.Windows.Forms;
 using ZipExtractor.Properties;
 
-namespace ZipExtractor
+namespace ZipExtractor;
+
+public partial class FormMain : Form
 {
-    public partial class FormMain : Form
+    private const int MaxRetries = 2;
+    private readonly StringBuilder _logBuilder = new();
+    private BackgroundWorker _backgroundWorker;
+
+    public FormMain()
     {
-        private const int MaxRetries = 2;
-        private BackgroundWorker _backgroundWorker;
-        private readonly StringBuilder _logBuilder = new StringBuilder();
+        InitializeComponent();
+    }
 
-        public FormMain()
+    private void FormMain_Shown(object sender, EventArgs e)
+    {
+        string zipPath = null;
+        string extractionPath = null;
+        string currentExe = null;
+        string updatedExe = null;
+        var clearAppDirectory = false;
+        string commandLineArgs = null;
+
+        _logBuilder.AppendLine(DateTime.Now.ToString("F"));
+        _logBuilder.AppendLine();
+        _logBuilder.AppendLine("ZipExtractor started with following command line arguments.");
+
+        string[] args = Environment.GetCommandLineArgs();
+        for (var index = 0; index < args.Length; index++)
         {
-            InitializeComponent();
-            ControlBox = false;
-        }
-
-        private void FormMain_Shown(object sender, EventArgs e)
-        {
-            _logBuilder.AppendLine(DateTime.Now.ToString("F"));
-            _logBuilder.AppendLine();
-            _logBuilder.AppendLine("ZipExtractor started with following command line arguments.");
-
-            string[] args = Environment.GetCommandLineArgs();
-            for (var index = 0; index < args.Length; index++)
+            string arg = args[index].ToLower();
+            switch (arg)
             {
-                var arg = args[index];
-                _logBuilder.AppendLine($"[{index}] {arg}");
+                case "--input":
+                    zipPath = args[index + 1];
+                    break;
+                case "--output":
+                    extractionPath = args[index + 1];
+                    break;
+                case "--current-exe":
+                    currentExe = args[index + 1];
+                    break;
+                case "--updated-exe":
+                    updatedExe = args[index + 1];
+                    break;
+                case "--clear":
+                    clearAppDirectory = true;
+                    break;
+                case "--args":
+                    commandLineArgs = args[index + 1];
+                    break;
             }
 
-            _logBuilder.AppendLine();
+            _logBuilder.AppendLine($"[{index}] {arg}");
+        }
 
-            if (args.Length >= 4)
+        _logBuilder.AppendLine();
+
+        if (string.IsNullOrEmpty(zipPath) || string.IsNullOrEmpty(extractionPath) || string.IsNullOrEmpty(currentExe))
+        {
+            return;
+        }
+
+        // Extract all the files.
+        _backgroundWorker = new BackgroundWorker
+        {
+            WorkerReportsProgress = true,
+            WorkerSupportsCancellation = true
+        };
+
+        _backgroundWorker.DoWork += (_, eventArgs) =>
+        {
+            foreach (Process process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(currentExe)))
             {
-                string executablePath = args[3];
-
-
-                //Delete all the dlls before copying latest version
-                DeleteDllsAndExe(args);
-
-                // Extract all the files.
-                _backgroundWorker = new BackgroundWorker
+                try
                 {
-                    WorkerReportsProgress = true,
-                    WorkerSupportsCancellation = true
-                };
-
-                _backgroundWorker.DoWork += (o, eventArgs) =>
-                {
-                    foreach (var process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(executablePath)))
+                    if (process.MainModule is { FileName: not null } && process.MainModule.FileName.Equals(currentExe))
                     {
+                        _logBuilder.AppendLine("Waiting for application process to exit...");
+
+                        _backgroundWorker.ReportProgress(0, Resources.WaitingForAppToExitMessage);
+                        process.WaitForExit();
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.WriteLine(exception.Message);
+                }
+            }
+
+            _logBuilder.AppendLine("BackgroundWorker started successfully.");
+
+            Invoke(new Action(() => { ControlBox = false; }));
+
+            // Ensures that the last character on the extraction path
+            // is the directory separator char.
+            // Without this, a malicious zip file could try to traverse outside of the expected
+            // extraction path.
+            if (!extractionPath.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
+            {
+                extractionPath += Path.DirectorySeparatorChar;
+            }
+
+            ZipArchive archive = ZipFile.OpenRead(zipPath);
+
+            ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
+
+            try
+            {
+                var progress = 0;
+
+                if (clearAppDirectory)
+                {
+                    _logBuilder.AppendLine($"Removing all files and folders from \"{extractionPath}\".");
+                    var directoryInfo = new DirectoryInfo(extractionPath);
+
+                    foreach (FileInfo file in directoryInfo.GetFiles())
+                    {
+                        _logBuilder.AppendLine($"Removing a file located at \"{file.FullName}\".");
+                        _backgroundWorker.ReportProgress(0, string.Format(Resources.Removing, file.FullName));
+                        file.Delete();
+                    }
+
+                    foreach (DirectoryInfo directory in directoryInfo.GetDirectories())
+                    {
+                        _logBuilder.AppendLine(
+                            $"Removing a directory located at \"{directory.FullName}\" and all its contents.");
+                        _backgroundWorker.ReportProgress(0, string.Format(Resources.Removing, directory.FullName));
+                        directory.Delete(true);
+                    }
+                }
+
+                _logBuilder.AppendLine($"Found total of {entries.Count} files and folders inside the zip file.");
+
+                for (var index = 0; index < entries.Count; index++)
+                {
+                    if (_backgroundWorker.CancellationPending)
+                    {
+                        eventArgs.Cancel = true;
+                        break;
+                    }
+
+                    ZipArchiveEntry entry = entries[index];
+
+                    string currentFile = string.Format(Resources.CurrentFileExtracting, entry.FullName);
+                    _backgroundWorker.ReportProgress(progress, currentFile);
+                    var retries = 0;
+                    var notCopied = true;
+                    while (notCopied)
+                    {
+                        var filePath = string.Empty;
                         try
                         {
-                            if (process.MainModule != null && process.MainModule.FileName.Equals(executablePath))
+                            filePath = Path.Combine(extractionPath, entry.FullName);
+                            if (!entry.IsDirectory())
                             {
-                                _logBuilder.AppendLine("Waiting for application process to exit...");
+                                string parentDirectory = Path.GetDirectoryName(filePath);
+                                if (parentDirectory != null)
+                                {
+                                    if (!Directory.Exists(parentDirectory))
+                                    {
+                                        Directory.CreateDirectory(parentDirectory);
+                                    }
+                                }
+                                else
+                                {
+                                    throw new ArgumentNullException($"parentDirectory is null for \"{filePath}\"!");
+                                }
 
-                                _backgroundWorker.ReportProgress(0, "Waiting for application to exit...");
-                                process.WaitForExit();
-                            }
-                        }
-                        catch (Exception exception)
-                        {
-                            Debug.WriteLine(exception.Message);
-                        }
-                    }
+                                using (Stream destination = File.Open(filePath, FileMode.OpenOrCreate, FileAccess.Write,
+                                           FileShare.None))
+                                {
+                                    using Stream stream = entry.Open();
+                                    stream.CopyTo(destination);
+                                    destination.SetLength(destination.Position);
+                                }
 
-                    _logBuilder.AppendLine("BackgroundWorker started successfully.");
-
-                    var path = args[2];
-                    
-                    // Ensures that the last character on the extraction path
-                    // is the directory separator char.
-                    // Without this, a malicious zip file could try to traverse outside of the expected
-                    // extraction path.
-                    if (!path.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
-                        path += Path.DirectorySeparatorChar;
-
-#if NET45
-                    var archive = ZipFile.OpenRead(args[1]);
-                    
-                    var entries = archive.Entries;
-#else
-                    // Open an existing zip file for reading.
-                    var zip = ZipStorer.Open(args[1], FileAccess.Read);
-                    
-                    // Read the central directory collection.
-                    var entries = zip.ReadCentralDir();
-#endif
-
-                    _logBuilder.AppendLine($"Found total of {entries.Count} files and folders inside the zip file.");
-
-                    try
-                    {
-                        int progress = 0;
-                        for (var index = 0; index < entries.Count; index++)
-                        {
-                            if (_backgroundWorker.CancellationPending)
-                            {
-                                eventArgs.Cancel = true;
-                                break;
+                                File.SetLastWriteTime(filePath, entry.LastWriteTime.DateTime);
                             }
 
-                            var entry = entries[index];
-
-#if NET45
-                            string currentFile = string.Format(Resources.CurrentFileExtracting, entry.FullName);
-#else
-                            string currentFile = string.Format(Resources.CurrentFileExtracting, entry.FilenameInZip);
-#endif
-                            _backgroundWorker.ReportProgress(progress, currentFile);
-                            int retries = 0;
-                            bool notCopied = true;
-                            while (notCopied)
+                            notCopied = false;
+                        }
+                        catch (IOException exception)
+                        {
+                            const int errorSharingViolation = 0x20;
+                            const int errorLockViolation = 0x21;
+                            int errorCode = Marshal.GetHRForException(exception) & 0x0000FFFF;
+                            if (errorCode is not (errorSharingViolation or errorLockViolation))
                             {
-                                string filePath = String.Empty;
+                                throw;
+                            }
+
+                            retries++;
+                            if (retries > MaxRetries)
+                            {
+                                throw;
+                            }
+
+                            List<Process> lockingProcesses = null;
+                            if (Environment.OSVersion.Version.Major >= 6 && retries >= 2)
+                            {
                                 try
                                 {
-#if NET45
-                                    filePath = Path.Combine(path, entry.FullName);
-                                    if (!entry.IsDirectory())
-                                    {
-                                        var parentDirectory = Path.GetDirectoryName(filePath);
-                                        if (!Directory.Exists(parentDirectory))
-                                        {
-                                            Directory.CreateDirectory(parentDirectory);
-                                        }
-                                        entry.ExtractToFile(filePath, true);
-                                    }
-#else
-                                    filePath = Path.Combine(path, entry.FilenameInZip);
-                                    zip.ExtractFile(entry, filePath);
-#endif
-                                    notCopied = false;
+                                    lockingProcesses = FileUtil.WhoIsLocking(filePath);
                                 }
-                                catch (IOException exception)
+                                catch (Exception)
                                 {
-                                    const int errorSharingViolation = 0x20;
-                                    const int errorLockViolation = 0x21;
-                                    var errorCode = Marshal.GetHRForException(exception) & 0x0000FFFF;
-                                    if (errorCode == errorSharingViolation || errorCode == errorLockViolation)
-                                    {
-                                        retries++;
-                                        if (retries > MaxRetries)
-                                        {
-                                            throw;
-                                        }
-
-                                        List<Process> lockingProcesses = null;
-                                        if (Environment.OSVersion.Version.Major >= 6 && retries >= 2)
-                                        {
-                                            try
-                                            {
-                                                lockingProcesses = FileUtil.WhoIsLocking(filePath);
-                                            }
-                                            catch (Exception)
-                                            {
-                                                // ignored
-                                            }
-                                        }
-
-                                        if (lockingProcesses == null)
-                                        {
-                                            Thread.Sleep(5000);
-                                        }
-                                        else
-                                        {
-                                            foreach (var lockingProcess in lockingProcesses)
-                                            {
-                                                var dialogResult = MessageBox.Show(
-                                                    string.Format(Resources.FileStillInUseMessage,
-                                                        lockingProcess.ProcessName, filePath),
-                                                    Resources.FileStillInUseCaption,
-                                                    MessageBoxButtons.RetryCancel, MessageBoxIcon.Error);
-                                                if (dialogResult == DialogResult.Cancel)
-                                                {
-                                                    throw;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        throw;
-                                    }
+                                    // ignored
                                 }
                             }
 
-                            progress = (index + 1) * 100 / entries.Count;
-                            _backgroundWorker.ReportProgress(progress, currentFile);
-
-                            _logBuilder.AppendLine($"{currentFile} [{progress}%]");
-                        }
-                    }
-                    finally
-                    {
-                        CopyFilesFromSystemToBooth(args);
-#if NET45
-                        archive.Dispose();
-#else
-                        zip.Close();
-#endif
-                    }
-                };
-
-                _backgroundWorker.ProgressChanged += (o, eventArgs) =>
-                {
-                    progressBar.Value = eventArgs.ProgressPercentage;
-                    textBoxInformation.Text = eventArgs.UserState.ToString();
-                    textBoxInformation.SelectionStart = textBoxInformation.Text.Length;
-                    textBoxInformation.SelectionLength = 0;
-                };
-
-                _backgroundWorker.RunWorkerCompleted += (o, eventArgs) =>
-                {
-                    try
-                    {
-                        if (eventArgs.Error != null)
-                        {
-                            throw eventArgs.Error;
-                        }
-
-                        if (!eventArgs.Cancelled)
-                        {
-                            textBoxInformation.Text = @"Finished";
-                            try
+                            if (lockingProcesses == null)
                             {
-                                ProcessStartInfo processStartInfo = new ProcessStartInfo(executablePath);
-                                if (args.Length > 4)
-                                {
-                                    processStartInfo.Arguments = args[4];
-                                }
-
-                                Process.Start(processStartInfo);
-
-                                _logBuilder.AppendLine("Successfully launched the updated application.");
+                                Thread.Sleep(5000);
+                                continue;
                             }
-                            catch (Win32Exception exception)
+
+                            foreach (Process lockingProcess in lockingProcesses)
                             {
-                                if (exception.NativeErrorCode != 1223)
+                                var dialogResult = DialogResult.None;
+
+                                Invoke(new Action(() =>
+                                {
+                                    dialogResult = MessageBox.Show(this,
+                                        string.Format(Resources.FileStillInUseMessage,
+                                            lockingProcess.ProcessName, filePath),
+                                        Resources.FileStillInUseCaption,
+                                        MessageBoxButtons.RetryCancel, MessageBoxIcon.Error);
+                                }));
+
+                                if (dialogResult == DialogResult.Cancel)
                                 {
                                     throw;
                                 }
                             }
                         }
                     }
-                    catch (Exception exception)
-                    {
-                        _logBuilder.AppendLine();
-                        _logBuilder.AppendLine(exception.ToString());
 
-                        MessageBox.Show(exception.Message, exception.GetType().ToString(),
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    finally
-                    {
-                        _logBuilder.AppendLine();
-                        Application.Exit();
-                        Environment.Exit(0);
-                    }
-                };
+                    progress = (index + 1) * 100 / entries.Count;
+                    _backgroundWorker.ReportProgress(progress, currentFile);
 
-                _backgroundWorker.RunWorkerAsync();
+                    _logBuilder.AppendLine($"{currentFile} [{progress}%]");
+                }
             }
-        }
-
-        private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (ModifierKeys == Keys.Alt || ModifierKeys == Keys.F4)
+            finally
             {
-                e.Cancel = true;
+                archive.Dispose();
+            }
+        };
+
+        _backgroundWorker.ProgressChanged += (_, eventArgs) =>
+        {
+            progressBar.Value = eventArgs.ProgressPercentage;
+            textBoxInformation.Text = eventArgs.UserState?.ToString() ?? string.Empty;
+            if (textBoxInformation.Text == null)
+            {
                 return;
             }
-            _backgroundWorker?.CancelAsync();
 
-            _logBuilder.AppendLine();
-            File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ZipExtractor.log"),
-                _logBuilder.ToString());
-        }
+            textBoxInformation.SelectionStart = textBoxInformation.Text.Length;
+            textBoxInformation.SelectionLength = 0;
+        };
 
-        private void CopyFilesFromSystemToBooth(string[] args)
+        _backgroundWorker.RunWorkerCompleted += (_, eventArgs) =>
         {
-            var BoothRootFolder = args[2] + "/Profile/Booth";
-            var System = args[2] + "/Profile/System";
-
             try
             {
-                foreach (var booth in Directory.GetDirectories(BoothRootFolder))
+                if (eventArgs.Error != null)
                 {
-                    foreach (var boothUserPath in Directory.GetDirectories(booth))
+                    throw eventArgs.Error;
+                }
+
+                if (eventArgs.Cancelled)
+                {
+                    return;
+                }
+
+                textBoxInformation.Text = @"Finished";
+                try
+                {
+                    string executablePath = string.IsNullOrWhiteSpace(updatedExe)
+                        ? currentExe
+                        : Path.Combine(extractionPath, updatedExe);
+                    var processStartInfo = new ProcessStartInfo(executablePath);
+                    if (!string.IsNullOrEmpty(commandLineArgs))
                     {
-                        CopyAll(new DirectoryInfo( System), new DirectoryInfo(boothUserPath));
+                        processStartInfo.Arguments = commandLineArgs;
+                    }
+
+                    Process.Start(processStartInfo);
+
+                    _logBuilder.AppendLine("Successfully launched the updated application.");
+                }
+                catch (Win32Exception exception)
+                {
+                    if (exception.NativeErrorCode != 1223)
+                    {
+                        throw;
                     }
                 }
             }
-            catch (System.IO.IOException e)
+            catch (Exception exception)
             {
-                _logBuilder.AppendLine(e.ToString());
-            }
-        }
-        public static void CopyAll(DirectoryInfo source, DirectoryInfo target)
-        {
-            Directory.CreateDirectory(target.FullName);
+                _logBuilder.AppendLine();
+                _logBuilder.AppendLine(exception.ToString());
 
-            // Copy each file into the new directory.
-            foreach (FileInfo fi in source.GetFiles())
-            {
-                Console.WriteLine(@"Copying {0}\{1}", target.FullName, fi.Name);
-                fi.CopyTo(Path.Combine(target.FullName, fi.Name), true);
+                MessageBox.Show(this, exception.Message, exception.GetType().ToString(),
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                _logBuilder.AppendLine();
+                Application.Exit();
+            }
+        };
 
-            // Copy each subdirectory using recursion.
-            foreach (DirectoryInfo diSourceSubDir in source.GetDirectories())
-            {
-                DirectoryInfo nextTargetSubDir =
-                    target.CreateSubdirectory(diSourceSubDir.Name);
-                CopyAll(diSourceSubDir, nextTargetSubDir);
-            }
-        }
-        private void DeleteDllsAndExe(string[] args)
-        {
-            try
-            {
-                string[] dlls = Directory.GetFiles(args[2], "*.dll");
-                foreach (var dll in dlls)
-                {
-                    File.Delete(dll);
-                }
+        _backgroundWorker.RunWorkerAsync();
+    }
 
-                string[] executables = Directory.GetFiles(args[2], "*.exe");
-                foreach (var exe in executables)
-                {
-                    File.Delete(exe);
-                }
-            }
-            catch (System.IO.IOException e)
-            {
-                _logBuilder.AppendLine(e.ToString());
-            }
-        }
+    private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
+    {
+        _backgroundWorker?.CancelAsync();
+
+        _logBuilder.AppendLine();
+        File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ZipExtractor.log"),
+            _logBuilder.ToString());
     }
 }
