@@ -32,25 +32,26 @@ namespace AutoUpdaterDotNET
             var processStartInfo = new ProcessStartInfo
             {
                 FileName = tempPath,
-                UseShellExecute = true,
-                Arguments = installerArgs
+                UseShellExecute = false,
+                Arguments = installerArgs ?? string.Empty,
             };
 
             var extension = Path.GetExtension(tempPath);
             if (extension.Equals(".zip", StringComparison.OrdinalIgnoreCase))
             {
                 string installerPath = Path.Combine(Path.GetDirectoryName(tempPath), "ZipExtractor.exe");
+                string installerdllPath = Path.Combine(Path.GetDirectoryName(tempPath), "ZipExtractor.dll");
 
                 File.WriteAllBytes(installerPath, Resources.ZipExtractor);
-
-                string executablePath = Process.GetCurrentProcess().MainModule.FileName;
+                
+                string executablePath = Process.GetCurrentProcess().MainModule.FileName;                
                 string extractionPath = Path.GetDirectoryName(executablePath);
 
                 if (!string.IsNullOrEmpty(AutoUpdater.InstallationPath) &&
                     Directory.Exists(AutoUpdater.InstallationPath))
                 {
                     extractionPath = AutoUpdater.InstallationPath;
-                }
+                }                
 
                 StringBuilder arguments =
                     new StringBuilder($"\"{tempPath}\" \"{extractionPath}\" \"{executablePath}\"");
@@ -69,7 +70,7 @@ namespace AutoUpdaterDotNET
                 processStartInfo = new ProcessStartInfo
                 {
                     FileName = installerPath,
-                    UseShellExecute = true,
+                    UseShellExecute = false,
                     Arguments = arguments.ToString()
                 };
             }

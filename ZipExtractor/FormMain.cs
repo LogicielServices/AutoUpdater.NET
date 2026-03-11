@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -16,28 +17,28 @@ namespace ZipExtractor
     {
         private const int MaxRetries = 2;
         private BackgroundWorker _backgroundWorker;
-        private readonly StringBuilder _logBuilder = new StringBuilder();
+        //private readonly StringBuilder Log = new StringBuilder();
 
         public FormMain()
         {
             InitializeComponent();
             ControlBox = false;
+            SetupLogger();
         }
 
         private void FormMain_Shown(object sender, EventArgs e)
-        {
-            _logBuilder.AppendLine(DateTime.Now.ToString("F"));
-            _logBuilder.AppendLine();
-            _logBuilder.AppendLine("ZipExtractor started with following command line arguments.");
+        {            
+            Log.Information(DateTime.Now.ToString("F"));
+            
+            Log.Information("ZipExtractor started with following command line arguments.");
 
             string[] args = Environment.GetCommandLineArgs();
             for (var index = 0; index < args.Length; index++)
             {
                 var arg = args[index];
-                _logBuilder.AppendLine($"[{index}] {arg}");
+                Log.Information($"[{index}] {arg}");
             }
-
-            _logBuilder.AppendLine();
+            
 
             if (args.Length >= 4)
             {
@@ -62,7 +63,7 @@ namespace ZipExtractor
                         {
                             if (process.MainModule != null && process.MainModule.FileName.Equals(executablePath))
                             {
-                                _logBuilder.AppendLine("Waiting for application process to exit...");
+                                Log.Information("Waiting for application process to exit...");
 
                                 _backgroundWorker.ReportProgress(0, "Waiting for application to exit...");
                                 process.WaitForExit();
@@ -71,10 +72,11 @@ namespace ZipExtractor
                         catch (Exception exception)
                         {
                             Debug.WriteLine(exception.Message);
+                            Log.Information(exception.Message);
                         }
                     }
 
-                    _logBuilder.AppendLine("BackgroundWorker started successfully.");
+                    Log.Information("BackgroundWorker started successfully.");
 
                     var path = args[2];
                     
@@ -97,7 +99,7 @@ namespace ZipExtractor
                     var entries = zip.ReadCentralDir();
 #endif
 
-                    _logBuilder.AppendLine($"Found total of {entries.Count} files and folders inside the zip file.");
+                    Log.Information($"Found total of {entries.Count} files and folders inside the zip file.");
 
                     try
                     {
@@ -198,12 +200,12 @@ namespace ZipExtractor
                             progress = (index + 1) * 100 / entries.Count;
                             _backgroundWorker.ReportProgress(progress, currentFile);
 
-                            _logBuilder.AppendLine($"{currentFile} [{progress}%]");
+                            Log.Information($"{currentFile} [{progress}%]");
                         }
                     }
                     finally
                     {
-                        CopyFilesFromSystemToBooth(args);
+                        //CopyFilesFromSystemToBooth(args);
 #if NET45
                         archive.Dispose();
 #else
@@ -242,7 +244,7 @@ namespace ZipExtractor
 
                                 Process.Start(processStartInfo);
 
-                                _logBuilder.AppendLine("Successfully launched the updated application.");
+                                Log.Information("Successfully launched the updated application.");
                             }
                             catch (Win32Exception exception)
                             {
@@ -254,16 +256,14 @@ namespace ZipExtractor
                         }
                     }
                     catch (Exception exception)
-                    {
-                        _logBuilder.AppendLine();
-                        _logBuilder.AppendLine(exception.ToString());
+                    {                        
+                        Log.Information(exception.ToString());
 
                         MessageBox.Show(exception.Message, exception.GetType().ToString(),
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                     finally
-                    {
-                        _logBuilder.AppendLine();
+                    {                        
                         Application.Exit();
                         Environment.Exit(0);
                     }
@@ -280,11 +280,7 @@ namespace ZipExtractor
                 e.Cancel = true;
                 return;
             }
-            _backgroundWorker?.CancelAsync();
-
-            _logBuilder.AppendLine();
-            File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ZipExtractor.log"),
-                _logBuilder.ToString());
+            _backgroundWorker?.CancelAsync();                        
         }
 
         private void CopyFilesFromSystemToBooth(string[] args)
@@ -304,7 +300,7 @@ namespace ZipExtractor
             }
             catch (System.IO.IOException e)
             {
-                _logBuilder.AppendLine(e.ToString());
+                Log.Information(e.ToString());
             }
         }
         public static void CopyAll(DirectoryInfo source, DirectoryInfo target)
@@ -333,19 +329,43 @@ namespace ZipExtractor
                 string[] dlls = Directory.GetFiles(args[2], "*.dll");
                 foreach (var dll in dlls)
                 {
+                    Log.Information($"Deleting dll: {dll}");
                     File.Delete(dll);
                 }
 
                 string[] executables = Directory.GetFiles(args[2], "*.exe");
                 foreach (var exe in executables)
                 {
+                    Log.Information($"Deleting exe: {exe}");
                     File.Delete(exe);
                 }
             }
             catch (System.IO.IOException e)
             {
-                _logBuilder.AppendLine(e.ToString());
+                Log.Information(e.ToString());
             }
+        }
+
+        private void SetupLogger()
+        {
+            // Get the EXE directory
+            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            string exeDir = Path.GetDirectoryName(exePath);
+
+            // Define log file path
+            string logFilePath = Path.Combine(exeDir, "ZipExtractor-log.txt");
+
+            // Configure Serilog
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.File(
+                    logFilePath,
+                    rollingInterval: RollingInterval.Day,   // new file per day
+                    retainedFileCountLimit: 7,              // keep last 7 days
+                    shared: true                            // safe for multi-process
+                )
+                .CreateLogger();
+
         }
     }
 }
