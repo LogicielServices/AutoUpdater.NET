@@ -7,8 +7,8 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>AutoUpdaterTestWPF</RootNamespace>
     <AssemblyName>AutoUpdaterTestWPF</AssemblyName>
-	<AssemblyVersion>2602.0.0.0</AssemblyVersion>
-	<FileVersion>2602.0.0.0</FileVersion>
+	<AssemblyVersion>2602.0.0.1</AssemblyVersion>
+	<FileVersion>2602.0.0.1</FileVersion>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 

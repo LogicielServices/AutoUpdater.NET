@@ -10,12 +10,12 @@
 		<Company>RBSoft</Company>
 		<Product>ZipExtractor</Product>
 		<Copyright>Copyright © 2012-2026 RBSoft</Copyright>
-		<AssemblyVersion>2602.0.0.0</AssemblyVersion>
-		<FileVersion>2602.0.0.0</FileVersion>
-		<Version>2602.0.0.0</Version>
+		<AssemblyVersion>2602.0.0.1</AssemblyVersion>
+		<FileVersion>2602.0.0.1</FileVersion>
+		<Version>2602.0.0.1</Version>
 
 		<!-- Application settings -->
-		<ApplicationVersion>2602.0.0.0</ApplicationVersion>
+		<ApplicationVersion>2602.0.0.1</ApplicationVersion>
 		<ApplicationIcon>ZipExtractor.ico</ApplicationIcon>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 
@@ -32,18 +32,22 @@
 
 	<!-- Release configuration -->
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
-		<OutputPath>..\AutoUpdater.NET\Resources</OutputPath>
+		<!-- <OutputPath>..\AutoUpdater.NET\Resources</OutputPath> -->
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<DebugType>none</DebugType>
 		<DebugSymbols>false</DebugSymbols>
+		<SelfContained>true</SelfContained>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>		
+		<PublishReadyToRun>false</PublishReadyToRun>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 	</PropertyGroup>
 
 	<!-- NuGet dependencies -->
 	<ItemGroup>
-		<PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.44.1">
+<!--		<PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.44.1">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
+		</PackageReference> -->
 		<PackageReference Include="ZipStorer" Version="4.2.0" />
 	</ItemGroup>
 

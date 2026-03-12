@@ -8,8 +8,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>AutoUpdaterTest</RootNamespace>
     <AssemblyName>AutoUpdaterTest</AssemblyName>
-	<AssemblyVersion>2602.0.0.0</AssemblyVersion>
-	<FileVersion>2602.0.0.0</FileVersion>	  
+	<AssemblyVersion>2602.0.0.1</AssemblyVersion>
+	<FileVersion>2602.0.0.1</FileVersion>	  
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
